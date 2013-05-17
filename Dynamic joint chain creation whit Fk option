@@ -1,0 +1,638 @@
+"""
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//--------------------------------------------------------------------------------------------------------//
+// TOOL NAME : Dynamic Fk System.                                                                         //
+// AUTHOR    : Jhon Ricardo Vasquez Orrego, alias "Riggardo" o "El tigre".                                //
+// EMAIL     : zetareticula3d@gmail.com                                                                   //
+// WEB       : zetareticula.wordpress.com                                                                 //
+//--------------------------------------------------------------------------------------------------------//
+// Copyright (C) 2013 Dynamic Fk System - Jhon Ricardo Vasquez Orrego                                     //
+//--------------------------------------------------------------------------------------------------------//
+// START DATE   :   October  30,  2012                                                                    //
+// UPDATED DATE :   January  31,  2013                                                                    //
+//--------------------------------------------------------------------------------------------------------//
+// VERSION :        1.1                                                                                   //
+//--------------------------------------------------------------------------------------------------------//
+// DESCRIPTION :    Creates simply dynamics systems whit the option of fk controller at the same time.    //
+//--------------------------------------------------------------------------------------------------------//
+// HOW TO USE :     Run all this script and later dynamicFkSystemUI() on the command line.                //
+//--------------------------------------------------------------------------------------------------------//
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+"""
+###:::::::::::::::::::::::::::::::::::::: << Dynamic Fk System >> ::::::::::::::::::::::::::::::::::::::::::
+    
+###---------------------------------------------------------------------------------------------------------
+###:::::::::::::::::::::::::::::::::::::::::::::: Imports ::::::::::::::::::::::::::::::::::::::::::::::::::
+###---------------------------------------------------------------------------------------------------------
+import maya.cmds as mc
+#-----------------------------------------------------------------------------------------------------------
+
+def dynamicFkSystemUI():    
+#-----------------------------------------------------------------------------------------------------------
+    ### -->> DynamicFk Window
+    ### -->> check if windowsUI exists and delete it
+    ### -->> If not exists the windows in going to be created.
+#-----------------------------------------------------------------------------------------------------------
+   
+    if mc.window( "DynamicFkUI", exists=True ):
+        mc.deleteUI( "DynamicFkUI" )
+#-----------------------------------------------------------------------------------------------------------
+    mc.window( "DynamicFkUI", title="DynamicFkSystem ", w=300, h=600, mnb=True, mxb=False, sizeable=False )
+#-----------------------------------------------------------------------------------------------------------
+    ### -->> "DynamicFkUI Main layout
+#-----------------------------------------------------------------------------------------------------------
+    mainLayout = mc.rowColumnLayout( "mainLayoutUI", w=300, h=600 )
+    mc.separator( h=20, w=300, style="in" )
+    mc.text( label="Create dynamic Fk system tool", font="smallFixedWidthFont", h=50, bgc=[0.1195, 0.1832, 0.2256], align='center' )
+    mc.separator( h=10, w=300, style="in" )
+    mc.optionMenu( "systemMethodMenu", w=30, label="System method:", bgc=[0.3882, 0.3882, 0.3882], enableBackground=False, changeCommand="UIitemColorChange()" )
+    mc.menuItem( "singleMenu", label="Single" )
+    mc.menuItem( "FkSystemMenu", label="Fk system")   
+    mc.separator( h=10, w=300, style="none" )
+    mc.optionMenu( "controlClassMenu", w=30, label="Controls Class:  ", enable=False,  bgc=[0.203, 0.203, 0.203], enableBackground=False  )
+    mc.menuItem( "Cross",label="Cross" )
+    mc.menuItem( "Sphere", label="Sphere" )
+    mc.menuItem( "Square", label="Square" )
+    mc.menuItem( "FourArrows", label="FourArrows" )
+    mc.separator( h=10, w=300, style="in" )
+    mc.intSliderGrp( "FkControlsNumbers", label="Fk controls numbers :", field=True, enable=False, columnAlign=[1, "left"], w=100, minValue=3 , maxValue=10 , fieldMinValue=3, fieldMaxValue=10 , value=3, columnWidth1=20 )
+    mc.separator( h=10, w=300, style="in" )
+    mc.button( label=" Create System !", w=300, h=28, bgc=[0.2366, 0.3496, 0.2262], command="mainDynamicSystemProcces()" )
+    mc.separator( h=10, w=300, style="in" )
+    mc.textScrollList("dynSystemList", numberOfRows=8, h=120, w=350, bgc=[0.3882, 0.3882, 0.3882], allowMultiSelection=True, font="tinyBoldLabelFont", selectCommand='connectControls()' )
+    mc.separator( h=10, w=300, style="in" )
+    mc.button( label="        Update Systems      ", w=300, h=28, bgc=[0.2, 0.3, 0.4], command="addOldSystems()" )
+    mc.separator( h=10, w=300, style="in" )
+    mc.separator( h=10, w=300, style="in" )
+    mc.button( label="         :::::::   Delete System   :::::::          ", w=300, h=28, bgc=[0.460, 0.191, 0.199], command="deleteSystems()" )
+    mc.separator( h=10, w=300, style="in" )
+    mc.text( label="--> Parametrics overrides <--", font="smallFixedWidthFont", h=25, bgc=[0.1195, 0.1832, 0.2256] )
+    mc.separator( h=10, w=300, style="in" )
+    mc.text( label=" * Optional control forces from the tool * ", font="smallFixedWidthFont", align="center" )
+    mc.separator( h=10, w=300, style="in",  )    
+    mc.frameLayout( collapsable=True, borderStyle="out", collapse=True, label=" Forces " )
+    mc.separator( h=10, w=300, style="in" )
+    mc.floatSliderGrp( "StartCurveAttract", label="StartCurveAttract", field=True, bgc=[0.203, 0.203, 0.203], enable=False, columnAlign=[1, "left"], w=20, minValue=0.0 , maxValue=1.000 , fieldMinValue=0.0, fieldMaxValue=1.000 , value=0, columnWidth1=20 )
+    mc.iconTextButton( "StartCurveAttractGreenIcon", parent="StartCurveAttract", command='keyframeToSystemForces( ".startCurveAttract"), colorChangeRedKeyIcon( "StartCurveAttractGreenIcon")', align="left", style='iconOnly', bgc=[0.130, 0.330, 0.130], image1='autoKeyframeOff.png')
+    mc.popupMenu( parent="StartCurveAttract" )
+    mc.menuItem( "StartCurveAttractGreenIcon", label="Break Key ", command='deleteKeysToSystemForces( ".startCurveAttract" ), colorChangeGreenKeyIcon( "StartCurveAttractGreenIcon" )' )
+    mc.floatSliderGrp( "AttractionDamp", label="Attraction Damp", enable=False, bgc=[0.203, 0.203, 0.203], columnAlign=[1, "left"], w=100, field=True, fieldMaxValue=1.000, fieldMinValue=0.000, min=-0.000, max=1.000, value=0, precision=3, columnWidth1=20 )
+    mc.iconTextButton( "attractionDampGreenIcon", parent="AttractionDamp", command='keyframeToSystemForces( ".attractionDamp" ), colorChangeRedKeyIcon( "attractionDampGreenIcon")', align="left", style='iconOnly', bgc=[0.130, 0.330, 0.130], image1='autoKeyframeOff.png')
+    mc.popupMenu( parent="AttractionDamp" )
+    mc.menuItem( "attractionDampGreenIcon", label="Break Key ", command='deleteKeysToSystemForces( ".attractionDamp" ), colorChangeGreenKeyIcon( "attractionDampGreenIcon" )' )
+    mc.floatSliderGrp( "Stiffness", label="Stiffness", enable=False, bgc=[0.203, 0.203, 0.203], columnAlign=[1, "left"], w=100, field=True, fieldMaxValue=1.000, fieldMinValue=0.000, min=-0.000, max=1.000, value=0, precision=3, columnWidth1=20 )
+    mc.iconTextButton( "stiffnessGreenIcon", parent="Stiffness", command='keyframeToSystemForces( ".stiffness" ), colorChangeRedKeyIcon( "stiffnessGreenIcon" )', align="left", style='iconOnly', bgc=[0.130, 0.330, 0.130], image1='autoKeyframeOff.png')
+    mc.popupMenu( parent="Stiffness" )
+    mc.menuItem( label="Break Key", command='deleteKeysToSystemForces( ".stiffness" ), colorChangeGreenKeyIcon( "stiffnessGreenIcon" )' )
+    mc.floatSliderGrp( "Drag", label="Drag", enable=False, bgc=[0.203, 0.203, 0.203], columnAlign=[1, "left"], w=100, field=True, fieldMaxValue=1.000, fieldMinValue=0.000, min=-0.000, max=1.000, value=0, precision=3, columnWidth1=20 )
+    mc.iconTextButton( "dragGreenIcon", parent="Drag", command='keyframeToSystemForces( ".drag" ), colorChangeRedKeyIcon( "dragGreenIcon" )', align="left", style='iconOnly', bgc=[0.130, 0.330, 0.130], image1='autoKeyframeOff.png')
+    mc.popupMenu( parent="Drag" )
+    mc.menuItem( "dragGreenIcon", label="Break Key ", command='deleteKeysToSystemForces( ".drag"), colorChangeGreenKeyIcon( "dragGreenIcon" )' )
+    mc.floatSliderGrp( "MotionDrag", label="Motion Drag", enable=False, bgc=[0.203, 0.203, 0.203], columnAlign=[1, "left"], w=100, field=True, fieldMaxValue=1.000, fieldMinValue=0.000, min=-0.000, max=1.000, value=0, precision=3, columnWidth1=20 )
+    mc.iconTextButton( "motionDragGreenIcon", parent="MotionDrag", command='keyframeToSystemForces( ".motionDrag" ), colorChangeRedKeyIcon( "motionDragGreenIcon" )', align="left", style='iconOnly', bgc=[0.130, 0.330, 0.130], image1='autoKeyframeOff.png')
+    mc.popupMenu( parent="MotionDrag" )
+    mc.menuItem( "motionDragGreenIcon", label="Break Key", command='deleteKeysToSystemForces( ".motionDrag" ), colorChangeGreenKeyIcon( "motionDragGreenIcon" )' )
+    mc.floatSliderGrp( "Damp", label="Damp", enable=False, bgc=[0.203, 0.203, 0.203], columnAlign=[1, "left"], w=100, field=True, fieldMaxValue=1.000, fieldMinValue=0.000, min=-0.000, max=1.000, value=0, precision=3, columnWidth1=20 )
+    mc.iconTextButton( "dampGreenIcon", parent="Damp", command='keyframeToSystemForces( ".damp" ), colorChangeRedKeyIcon( "dampGreenIcon" )', align="left", style='iconOnly', bgc=[0.130, 0.330, 0.130], image1='autoKeyframeOff.png')
+    mc.popupMenu( parent="Damp" )
+    mc.menuItem( "dampGreenIcon", label="Break Key", command='deleteKeysToSystemForces( ".damp" ), colorChangeGreenKeyIcon( "dampGreenIcon" )' )
+    mc.floatSliderGrp( "Friction", label="Friction", enable=False, bgc=[0.203, 0.203, 0.203], columnAlign=[1, "left"], w=100, field=True, fieldMaxValue=1.000, fieldMinValue=0.000, min=-0.000, max=1.000, value=0, precision=3, columnWidth1=20 )
+    mc.iconTextButton( "frictionGreenIcon", parent="Friction", command='keyframeToSystemForces( ".friction" ), colorChangeRedKeyIcon( "frictionGreenIcon" )', align="left", style='iconOnly', bgc=[0.130, 0.330, 0.130], image1='autoKeyframeOff.png')
+    mc.popupMenu( parent="Friction" )
+    mc.menuItem( "frictionGreenIcon", label="Break Key", command='deleteKeysToSystemForces( ".friction" ), colorChangeGreenKeyIcon( "frictionGreenIcon" )' )
+    mc.floatSliderGrp( "Mass", label="Mass", enable=False, bgc=[0.203, 0.203, 0.203], columnAlign=[1, "left"], w=100, field=True, fieldMaxValue=1.000, fieldMinValue=0.000, min=-0.000, max=1.000, value=0, precision=3, columnWidth1=20 )
+    mc.iconTextButton( "massGreenIcon", parent="Mass", command='keyframeToSystemForces( ".mass" ), colorChangeRedKeyIcon( "massGreenIcon" )', align="left", style='iconOnly', bgc=[0.130, 0.330, 0.130], image1='autoKeyframeOff.png')
+    mc.popupMenu( parent="Mass" )
+    mc.menuItem( "massGreenIcon", label="Break Key", command='deleteKeysToSystemForces( ".mass" ), colorChangeGreenKeyIcon( "massGreenIcon" )' )
+    mc.floatSliderGrp( "Gravity", label="Gravity",  enable=False, bgc=[0.203, 0.203, 0.203], columnAlign=[1, "left"], w=100, field=True, fieldMaxValue=1.000, fieldMinValue=0.000, min=-0.000, max=1.000, value=0, precision=3, columnWidth1=20 )
+    mc.iconTextButton( "gravityGreenIcon", parent="Gravity", command='keyframeToSystemForces( ".gravity" ), colorChangeRedKeyIcon( "gravityGreenIcon" )', align="left", style='iconOnly', bgc=[0.130, 0.330, 0.130], image1='autoKeyframeOff.png')
+    mc.popupMenu( parent="Gravity" )
+    mc.menuItem( "gravityGreenIcon", label="Break Key", command='deleteKeysToSystemForces( ".gravity" ), colorChangeGreenKeyIcon( "gravityGreenIcon" )' )
+    mc.floatSliderGrp( "DynamicWeight", label="Dynamic Weight",  enable=False, bgc=[0.203, 0.203, 0.203], columnAlign=[1, "left"], w=100, field=True, fieldMaxValue=1.000, fieldMinValue=0.000, min=-0.000, max=1.000, value=0, precision=3, columnWidth1=20 )
+    mc.iconTextButton( "dynamicsWeightGreenIcon", parent="DynamicWeight", command='keyframeToSystemForces( ".dynamicsWeight" ), colorChangeRedKeyIcon( "dynamicsWeightGreenIcon" )', align="left", style='iconOnly',bgc=[0.130, 0.330, 0.130], image1='autoKeyframeOff.png')
+    mc.popupMenu( parent="DynamicWeight" )
+    mc.menuItem( "dynamicsWeightGreenIcon", label="Break Key ", command='deleteKeysToSystemForces( ".dynamicsWeight" ), colorChangeGreenKeyIcon( "dynamicsWeightGreenIcon" )' )
+    mc.separator( h=2, w=300, style="none" )
+    mc.frameLayout( "playBackOptions", collapsable=True, borderStyle="out", label=" Interactive Play ", collapse=True, parent="mainLayoutUI")
+    mc.separator( h=10, w=300, style="in" )
+    mc.text( h=15, w=300, label=" * Optional dynamic playback control * ", font="smallFixedWidthFont", align="center")
+    mc.iconTextButton( bgc=[0.1195, 0.1832, 0.2256], h=25, align="left", style="iconAndTextCentered", image1='interactivePlayback.png', label=' Interactive Play ', command="mc.play( state=False, record=True )" )
+    mc.separator( h=05, w=300, style="in" )
+    mc.showWindow ()
+
+###---------------------------------------------------------------------------------------------------------
+###::::::::::::::::::::::::::::::::::: Here begins the main function :::::::::::::::::::::::::::::::::::::::
+###---------------------------------------------------------------------------------------------------------
+def mainDynamicSystemProcces():
+#-----------------------------------------------------------------------------------------------------------
+    ### -->> UI menus querys, just for ask the state of the menus and make changes in on road.
+#-----------------------------------------------------------------------------------------------------------
+    systemMethodValue       = mc.optionMenu( "systemMethodMenu", query=True, value=True )
+    FkControlsNnumbersValue = mc.intSliderGrp( "FkControlsNumbers", query=True, value=True )
+    controlClassMenuValue   = mc.optionMenu( "controlClassMenu", query=True, value=True )
+    globalName              = "DynamicFksystem"
+    suffix                  = [ "__OFFST", "__JNT", "__CRV", "__FOL", "__HRS", "__IKH","__GRP" ]
+#-----------------------------------------------------------------------------------------------------------
+    ### -->> Look if systems are already on the scene and put them in textScrollList
+#-----------------------------------------------------------------------------------------------------------
+    esceneSystems = mc.ls(globalName+"_mainCurve__*")
+    newSystems    = []
+    for s in esceneSystems:
+        if 'Shape' not in s:
+            newSystems.append(s)
+
+    newSystemsAmount   = len( newSystems )
+    amountOfNewSystems = newSystemsAmount+1
+#-----------------------------------------------------------------------------------------------------------
+    ### -->> at this point i`am ensures that the user has selected a curve
+    ### -->> otherwise an error message will appear
+#-----------------------------------------------------------------------------------------------------------
+    try: 
+        selectionCrv = mc.ls( selection=True )[0]
+    except:
+        warningMessage01()
+        return
+
+    else:
+        pass
+
+    mc.setAttr( selectionCrv+".visibility", 0 )
+    LastCurveName = mc.rename(selectionCrv, globalName+"_mainCurve__"+str( amountOfNewSystems ))
+    global LastCurveNum
+    LastCurveNum = LastCurveName.split("__")[1]
+#-----------------------------------------------------------------------------------------------------------
+    ### -->> Ascertain existing systems now with the new.
+#-----------------------------------------------------------------------------------------------------------
+    beforeSystems = mc.ls( globalName+"_mainCurve__*" )
+    systems       =[]
+    for s in beforeSystems:
+        if 'Shape' not in s:
+            systems.append( s )
+        
+    mc.textScrollList( "dynSystemList", edit=True, removeAll=True, append=systems )
+#-----------------------------------------------------------------------------------------------------------
+    ###-->> Main dynamic procces creation.
+    ###-->> Here the tool star the awesome process of "CREATION".
+    ###-->> In this point star to make some duplicates,renaming, and stores to later ask for the position
+    ###-->> and amount of cv`s.
+    ###-->> Just making some question about the position of curve cv`s, and for each cv`s a joint is create
+    ###-->> along the curve.
+    ###-->> Later store in variables the joints to later make importants name convention and use those 
+    ###-->> variables to connect nodes later.
+    ###-->> PD : A zero transform is made just for avoid space translation.
+#-----------------------------------------------------------------------------------------------------------
+    mc.FreezeTransformations()
+    inputCrv        = mc.ls( selection=True )
+    duplicado       = mc.duplicate()
+    mc.FreezeTransformations()
+    outputCrvRename = mc.rename( "Dfks_ouputCurve__CRV" )
+    mc.setAttr( outputCrvRename + ".inheritsTransform", 0 )
+
+    crv    = mc.ls( sl=True )[0]
+    points = mc.select( crv + ".cv[*]" )
+    cvPos  = mc.ls( selection=True, flatten=True )
+    i=0 
+#-----------------------------------------------------------------------------------------------------------
+    for item in cvPos:
+        pos       = mc.xform( item, q=True, t=True, ws=True )
+        testJoint = mc.joint( position=pos, name=globalName+"_jointForSkin0"+str(i)+"__JNT" )
+        i=i+1
+    i=0    
+    jointsGrp    = mc.createNode( "transform", name=globalName+"_jointsForSkin__GRP" )
+    jointsGrpSel = mc.ls(selection=True)
+    mc.select( "DynamicFksystem_jointForSkin00__JNT" )
+    firstJoint   = mc.ls(selection=True) [0]
+    pos               = mc.xform( firstJoint, query=True, translation=True, worldSpace=True )
+    mc.parent( firstJoint, jointsGrpSel )
+    mc.rename( globalName+"_jointForSkinFirst0"+str(i)+"__JNT")
+    firstDynJoint = mc.ls(selection=True) [0]
+    jointList     = mc.listRelatives ( type="joint", allDescendents=True )
+    lastJoint     = jointList [0]
+    mc.select( lastJoint )
+    mc.rename ( globalName+"_jointForSkinLast"+str(i)+"__JNT" )
+    lastDynJoint  = mc.ls(selection=True) [0]
+#-----------------------------------------------------------------------------------------------------------
+    ###-->> In this part beging the creation of  the main locator to control all the system.
+    ###-->> later i have to store in a variable to make changes on the road.
+#-----------------------------------------------------------------------------------------------------------
+    locator           = mc.spaceLocator( name="locatorForGlobalControl__OFFSET", position=pos)
+    mainSystemControl = mc.ls( selection=True )
+
+###---------------------------------------------------------------------------------------------------------
+###:::::::::::::::::::::::::::::::::: Main FK dynamic system creation ::::::::::::::::::::::::::::::::::::::
+###---------------------------------------------------------------------------------------------------------
+
+#-----------------------------------------------------------------------------------------------------------
+    ###-->> Here lais the awesome option to create a Fk set of joints to control the system.
+    ###-->> Check if the user have a Fk option enable and start the process.
+    ###-->> Again making some question about the position of curve cv`s, and for each cv`s a joint is create
+    ###-->> along the curve.
+    ###-->> as well store in variables the joints to later make importants name convention and use those 
+    ###-->> variables to connect nodes later.
+#-----------------------------------------------------------------------------------------------------------
+    if systemMethodValue == "Fk system":
+
+        mc.select( inputCrv )
+        duplicateFkCrv = mc.duplicate( name="Dfks_rebuilToFkCurve__CRV" )
+        newFkCrv       = mc.ls( sl=True )[0]
+        mc.rebuildCurve( spans=FkControlsNnumbersValue, degree=1 )
+        mc.select( newFkCrv )
+        crv            = mc.ls( sl=True )[0]
+        points         = mc.select( crv + ".cv[*]" )
+        cvPos          = mc.ls( selection=True, flatten=True )
+        i=0
+        
+        for item in cvPos:
+            pos = mc.xform( item, query=True, translation=True, worldSpace=True )
+            mc.joint( position=pos, name="jointControl0"+str(i)+"__JNT" )
+            i   =i+1
+            
+        mc.createNode( "transform", name="jointsForControl__GRP" )
+        mc.select( "jointControl00__JNT" )
+        mc.parent( world=True )
+        FkJointCtrl  = mc.ls(selection=True)
+        mc.parent(FkJointCtrl, "jointsForControl__GRP" )
+        FkJointsList = mc.listRelatives( type="joint", allDescendents=True )
+#-----------------------------------------------------------------------------------------------------------
+    ###-->> Ok Here star the creation of the controls for each new fk joint created.
+    ###-->> Just ask the position of the joints, create a curve in the space position who had asked before.
+    ###-->> The procces is the same for each individually controls class of four controls classes.
+#-----------------------------------------------------------------------------------------------------------
+        for joint in FkJointsList:
+
+            pos = mc.xform( joint, query=True, translation=True, worldSpace=True )
+                                        
+            if controlClassMenuValue == "Cross"  :
+                crossVar   = mc.curve ( name="Dfks"+str(i)+"_crossCtrl__CNT",degree=1, point= [(0.774912, 0, -0.193728),( 0.774912, 0, 0.193728),(0.193728, 0, 0.193728),(0.193728, 0, 0.774912),(-0.193728, 0, 0.774912),(-0.193728, 0, 0.193728),( -0.774912, 0, 0.193728),(-0.774912, 0, -0.193728),( -0.193728, 0, -0.193728),(-0.193728, 0, -0.774912),(0.193728, 0, -0.774912),(0.193728, 0, -0.193728),(0.774912, 0, -0.193728)] )
+                mc.xform( crossVar, translation=pos )
+                offset     = mc.createNode ('transform', name=globalName+"crossCtrl"+suffix[0])
+                nodeMatrix = mc.xform (crossVar, query=True, worldSpace=True, matrix=True)
+                mc.xform (offset, matrix=nodeMatrix)
+                mc.parent (crossVar, offset, s=1)
+#===========================================================================================================
+            if controlClassMenuValue == "Sphere":
+                SphereVar  = mc.curve ( name="Dfks"+str(i)+"_sphereCtrl__CNT", degree=1, point=[( 0, 1, 0 ), ( -0.243988, 0.959493, 0.140866 ), ( -0.468209, 0.841254, 0.27032 ), ( -0.654498, 0.654861, 0.377875 ), ( -0.787764, 0.415415, 0.454816 ), ( -0.857211, 0.142315, 0.494911 ), ( -0.857211, -0.142315, 0.494911 ), ( -0.787764, -0.415415, 0.454816 ), ( -0.654498, -0.654861, 0.377875 ), ( -0.468209, -0.841254, 0.27032 ), ( -0.243988, -0.959493, 0.140866 ), ( 0, -1, 0 ), ( 0.243988, -0.959493, -0.140866 ), ( 0.468209, -0.841254, -0.27032 ), ( 0.654498, -0.654861, -0.377875 ), ( 0.787764, -0.415415, -0.454816 ), ( 0.857211, -0.142315, -0.494911 ), ( 0.857211, 0.142315, -0.494911 ), ( 0.787764, 0.415415, -0.454816 ), ( 0.654498, 0.654861, -0.377875 ), ( 0.468209, 0.841254, -0.27032 ), ( 0.243988, 0.959493, -0.140866 ), ( 0, 1, 0 ), ( -0.140866, 0.959493, -0.243988 ), ( -0.27032, 0.841254, -0.468209 ), ( -0.377875, 0.654861, -0.654498 ), ( -0.454816, 0.415415, -0.787764 ), ( -0.494911, 0.142315, -0.857211 ), ( -0.494911, -0.142315, -0.857211 ), ( -0.454816, -0.415415, -0.787764 ), ( -0.377875, -0.654861, -0.654498 ), ( -0.27032, -0.841254, -0.468209 ), ( -0.140866, -0.959493, -0.243988 ), ( 0, -1, 0 ), ( 0.140866, -0.959493, 0.243988 ), ( 0.27032, -0.841254, 0.468209 ), ( 0.377875, -0.654861, 0.654498 ), ( 0.454816, -0.415415, 0.787764 ), ( 0.494911, -0.142315, 0.857211 ), ( 0.494911, 0.142315, 0.857211 ), ( 0.454816, 0.415415, 0.787764 ), ( 0.377875, 0.654861, 0.654498 ), ( 0.27032, 0.841254, 0.468209 ), ( 0.140866, 0.959493, 0.243988 ), ( 0, 1, 0)])
+                mc.xform( SphereVar, translation=pos )
+                offset     = mc.createNode ('transform', name=globalName+"SphereCtrl"+suffix[0])
+                nodeMatrix = mc.xform (SphereVar, query=True, worldSpace=True, matrix=True)
+                mc.xform (offset, matrix=nodeMatrix)
+                mc.parent (SphereVar, offset)
+#===========================================================================================================
+            if controlClassMenuValue == "Square":
+                squareVar  = mc.curve ( name="Dfks"+str(i)+"_squareCtrl__CNT", degree= 1, point=[( 0.5, 0.5, -0.5),(-0.5, 0.5, -0.5), ( -0.5, 0.5, 0.5), ( 0.5, 0.5, 0.5),(0.5, 0.5, -0.5),(0.5, -0.5, -0.5),( -0.5, -0.5, -0.5), ( -0.5, 0.5, -0.5),(-0.5, -0.5, -0.5),(-0.5, -0.5, 0.5),(-0.5, 0.5, 0.5),( 0.5, 0.5, 0.5),(0.5, -0.5, 0.5),(-0.5, -0.5, 0.5),(0.5, -0.5, 0.5),(0.5, -0.5, -0.5)] )
+                mc.xform( squareVar, translation=pos )
+                offset     = mc.createNode ('transform', name=globalName+"squareCtrl"+suffix[0])
+                nodeMatrix = mc.xform (squareVar, query=True, worldSpace=True, matrix=True)
+                mc.xform (offset, matrix=nodeMatrix)
+                mc.parent (squareVar, offset)
+#===========================================================================================================
+            if controlClassMenuValue == "FourArrows":                
+                fourArrowsVar = mc.curve( name="Dfks"+str(i)+"_fourArrowCtrl__CNT", degree=1, point=[( 0, 8.46579e-007, -1.001567),(-0.336638,-7.25632e-008,-0.751175),(-0.0959835, -7.25632e-008, -0.751175),( -0.0959835, -8.46579e-007, -0.0987656),(-0.751175, -7.25632e-008, -0.0987656),(-0.751175, -7.25632e-008, -0.336638),(-1.001567, 8.46579e-007, 0),( -0.751175, -7.25632e-008, 0.336638),( -0.751175, -7.25632e-008, 0.0987656),( -0.0959835, -8.46579e-007, 0.0987656),( -0.0959835, -7.25632e-008, 0.751175),(-0.336638, -7.25632e-008, 0.751175),( 0, 8.46579e-007, 1.001567),( 0.336638, -7.25632e-008, 0.751175),(0.0959835, -7.25632e-008, 0.751175),(0.0959835, -8.46579e-007, 0.0987656),(0.751175, -7.25632e-008, 0.0987656),(0.751175, -7.25632e-008, 0.336638),( 1.001567, 8.46579e-007, 0),(0.751175, -7.25632e-008, -0.336638),(0.751175, -7.25632e-008, -0.0987656),(0.0959835, -8.46579e-007, -0.0987656),( 0.0959835, -7.25632e-008, -0.751175),(0.336638, -7.25632e-008, -0.751175),( 0, 8.46579e-007, -1.001567)] )
+                mc.xform(fourArrowsVar, translation=pos)
+                offset        = mc.createNode ('transform', name=globalName+"fourArrowCtrl"+suffix[0])
+                nodeMatrix    = mc.xform (fourArrowsVar, query=True, worldSpace=True, matrix=True)
+                mc.xform (offset, matrix=nodeMatrix)
+                mc.parent (fourArrowsVar, offset)
+#-----------------------------------------------------------------------------------------------------------
+    ###-->> Making some parenting to star organize the groups.
+    ###-->> parenting to the controls to his control parents, just making a fk chain of controls. 
+    ###-->> Star making some variables, then set the attributes to be used.
+    ###-->> Later delete the empty groups, The function of these nodes is already done, DELETE !!!!
+    ###-->> Again the procces is the same for each individually controls class of four controls classes...
+#-----------------------------------------------------------------------------------------------------------
+        if controlClassMenuValue == "Cross":
+            crossControlGlobalGrp = mc.createNode ('transform', name=globalName+"_crossCtrlGrp"+suffix[0])
+            controlsGrps    = mc.ls( "Dfks*_crossCtrl__CNT*" )
+            mc.parent ( controlsGrps, crossControlGlobalGrp )
+            mc.pickWalk( direction="up" )
+            listControlsGrp = mc.listRelatives( type="transform", allDescendents=True )
+
+            for Ctrl in listControlsGrp[:-1]:
+                childs = listControlsGrp[listControlsGrp.index( Ctrl ) + 1]
+                mc.parent( childs, Ctrl)
+
+            translationListAttributes = [ ".tx", ".ty", ".tz",".sx", ".sy", ".sz" ]
+
+            for attr in translationListAttributes:
+                mc.setAttr ( "Dfks*_crossCtrl__CNT*" + attr, lock=True, keyable=False, channelBox=False )
+
+                
+            FkJointsList.sort()
+            for Ctrl in listControlsGrp:
+                index = listControlsGrp.index( Ctrl )
+                mc.parentConstraint( Ctrl, FkJointsList[index], maintainOffset=True )
+
+            for Ctrl in listControlsGrp:
+                mc.rename( Ctrl, globalName+"_crossCtrl__CNT")
+
+            mc.delete( "DynamicFksystemcrossCtrl__OFFST*" )
+#===========================================================================================================
+        elif controlClassMenuValue == "Sphere":
+            sphereControlGlobalGrp = mc.createNode ('transform', name=globalName+"_crossCtrlGrp"+suffix[0])
+            controlsGrps           = mc.ls( "Dfks*_sphereCtrl__CNT*" )
+            mc.parent ( controlsGrps, sphereControlGlobalGrp )        
+            mc.pickWalk( direction="up" )
+            listControlsGrp  = mc.listRelatives( type="transform", allDescendents=True )
+
+            for Ctrl in listControlsGrp[:-1]:
+                childs = listControlsGrp[listControlsGrp.index( Ctrl ) + 1]
+                mc.parent( childs, Ctrl)
+
+            translationListAttributes = [ ".tx", ".ty", ".tz",".sx", ".sy", ".sz" ]
+
+            for attr in translationListAttributes:
+                mc.setAttr ( "Dfks*_sphereCtrl__CNT*" + attr, lock=True, keyable=False, channelBox=False )
+
+                
+            FkJointsList.sort()
+            for Ctrl in listControlsGrp:
+                index = listControlsGrp.index( Ctrl )
+                mc.parentConstraint( Ctrl, FkJointsList[index], maintainOffset=True )
+
+            for Ctrl in listControlsGrp:
+                mc.rename( Ctrl, globalName+"_SphereCtrl__CNT")
+
+            mc.delete( "DynamicFksystemSphereCtrl__OFFST*" )
+#===========================================================================================================
+        elif controlClassMenuValue == "Square":
+            squareControlGlobalGrp = mc.createNode ('transform', name=globalName+"_squareCtrlGrp"+suffix[0])
+            controlsGrps           = mc.ls( "Dfks*_squareCtrl__CNT*" )
+            mc.parent ( controlsGrps, squareControlGlobalGrp )        
+            mc.pickWalk( direction="up" )
+            listControlsGrp        = mc.listRelatives( type="transform", allDescendents=True )
+
+            for Ctrl in listControlsGrp[:-1]:
+                childs = listControlsGrp[listControlsGrp.index( Ctrl ) + 1]
+                mc.parent( childs, Ctrl)
+
+            translationListAttributes = [ ".tx", ".ty", ".tz",".sx", ".sy", ".sz" ]
+
+            for attr in translationListAttributes:
+                mc.setAttr ( "Dfks*_squareCtrl__CNT*" + attr, lock=True, keyable=False, channelBox=False )
+
+                
+            FkJointsList.sort()
+            for Ctrl in listControlsGrp:
+                index = listControlsGrp.index( Ctrl )
+                mc.parentConstraint( Ctrl, FkJointsList[index], maintainOffset=True )
+
+            for Ctrl in listControlsGrp:
+                mc.rename( Ctrl, globalName+"_squareCtrl__CNT")
+
+            mc.delete( "DynamicFksystemsquareCtrl__OFFST*" )
+#===========================================================================================================
+        elif controlClassMenuValue == "FourArrows":
+            fourArrowControlGlobalGrp = mc.createNode ('transform', name=globalName+"_fourArrowCtrlGrp"+suffix[0])
+            controlsGrps              = mc.ls( "Dfks*_fourArrowCtrl__CNT*" )
+            mc.parent ( controlsGrps, fourArrowControlGlobalGrp )        
+            mc.pickWalk( direction="up" )
+            listControlsGrp           = mc.listRelatives( type="transform", allDescendents=True )
+
+            for Ctrl in listControlsGrp[:-1]:
+                childs = listControlsGrp[listControlsGrp.index( Ctrl ) + 1]
+                mc.parent( childs, Ctrl)
+
+            translationListAttributes = [ ".tx", ".ty", ".tz",".sx", ".sy", ".sz" ]
+
+            for attr in translationListAttributes:
+                mc.setAttr ( "Dfks*_fourArrowCtrl__CNT*" + attr, lock=True, keyable=False, channelBox=False )
+
+                
+            FkJointsList.sort()
+            for Ctrl in listControlsGrp:
+                index = listControlsGrp.index( Ctrl )
+                mc.parentConstraint( Ctrl, FkJointsList[index], maintainOffset=True )
+
+            for Ctrl in listControlsGrp:
+                mc.rename( Ctrl, globalName+"_fourArrowCtrl__CNT")
+
+            mc.delete( "DynamicFksystemfourArrowCtrl__OFFST*" )
+###---------------------------------------------------------------------------------------------------------
+###:::::::::::::::::::::::::::::::::: Main dynamic system conecctions ::::::::::::::::::::::::::::::::::::::
+###---------------------------------------------------------------------------------------------------------
+
+#-----------------------------------------------------------------------------------------------------------
+    ###-->> Create the nodes, stores variables.
+    ###-->> Start nodes connections.
+    ###-->> Start groups creation and name convention to organice each system in a clean way.
+#-----------------------------------------------------------------------------------------------------------
+    hairSystem    = mc.createNode( "hairSystem", name="Dfks_system__HRS" )
+    hairSystemSel = mc.ls( selection=True )
+    follicle      = mc.createNode( "follicle", name="Dfks_system__FOL" )
+    mc.setAttr(follicle + ".startDirection", 1)
+#===========================================================================================================
+    mc.connectAttr( "time1.outTime", hairSystem + ".currentTime" )
+    mc.connectAttr( inputCrv[0] + ".worldSpace", follicle + ".startPosition" )
+    mc.connectAttr( follicle + ".outHair", hairSystem  +".inputHair[0]" )
+    mc.connectAttr( hairSystem + ".outputHair[0]", follicle + ".currentPosition" )
+    mc.connectAttr( follicle + ".outCurve", outputCrvRename + ".create" )
+    mc.ikHandle( name = globalName + suffix[4], startJoint=firstDynJoint, endEffector=lastDynJoint, curve=outputCrvRename, solver="ikSplineSolver", parentCurve=False, createCurve=False )
+    IkHandle = mc.ls( selection=True ) 
+#===========================================================================================================
+    follicleOffset  = mc.createNode( "transform", name=globalName+"_follicle"+suffix [6] )
+    hairOffset      = mc.createNode( "transform", name=globalName+"_outputCurve"+suffix [6] )
+    setupOffset     = mc.createNode( "transform", name=globalName+"_setup"+suffix [6] )
+    jointOffset     = mc.createNode( "transform", name=globalName+"_joint"+suffix [6] )
+    globalGrpOffset = mc.createNode( "transform", name=globalName+"_globalGrp"+suffix [6] )
+#-----------------------------------------------------------------------------------------------------------
+    ###-->> Some conditionals.
+    ###-->> Setting the inheritsTransform to 0 of global group for avoid doble cycles, just for Fk mode.
+    ###-->> Later the fk joints are selected to bind the main curve  to the fk joints... ( that`s the magic ).
+    ###-->> Hide the Fk joint chain, for convenience only.
+    ###-->> Delete some garbage nodes.
+    ###-->> And finally parenting the nodes each other as appropriate.
+#-----------------------------------------------------------------------------------------------------------
+    if systemMethodValue == "Fk system":
+        mc.setAttr( globalGrpOffset+".inheritsTransform", 0 )
+#===========================================================================================================
+    if systemMethodValue == "Fk system":
+
+        mc.select( "jointsForControl__GRP" )
+        FkJointListGrp = mc.listRelatives( type="joint", allDescendents=True )
+        mc.select( outputCrvRename )
+        mc.rename( globalName+"ouputCurve__CRV" )
+        newSkinCrv     = mc.ls( selection=True)
+        mc.select( FkJointListGrp, add=True )
+        mc.bindSkin( toSelectedBones=True )
+        for item in FkJointListGrp:
+            rename = mc.rename( item, globalName+"jointsForControl"+str(i)+"__JNT" )
+            i+=1
+#===========================================================================================================
+        mc.select( "jointsForControl__GRP" )
+        FkJointGrp                = mc.ls( selection=True )
+        FkList                    = mc.listRelatives ( allDescendents=True )
+        lastJoint                 = mc.ls( FkList[1] )
+        lastJointParentConstraint = mc.listRelatives ( lastJoint, allDescendents=True )
+        mc.delete( lastJointParentConstraint )
+#===========================================================================================================
+        mc.select( "jointsForControl__GRP" )
+        mc.setAttr( "jointsForControl__GRP.visibility", 0 )
+        mc.parent( "jointsForControl__GRP", mainSystemControl  )
+        mc.rename( globalName+"_FkJoints__GRP" )
+        mc.parent( newSkinCrv, hairOffset, shape=True )
+        mc.delete( "Dfks_rebuilToFkCurve__CRV*" )
+#===========================================================================================================
+    else:
+        mc.parent( outputCrvRename, hairOffset, shape=True )
+
+    mc.parent( inputCrv, follicle )
+    mc.parent( follicle, follicleOffset )
+    mc.parent( hairOffset, setupOffset )
+    mc.parent( follicleOffset, setupOffset )
+    mc.parent( setupOffset, globalGrpOffset )
+    mc.parent( jointOffset, globalGrpOffset )
+    mc.parent( IkHandle, globalGrpOffset )
+    mc.parent( hairSystemSel, globalGrpOffset )
+    mc.parent( jointsGrpSel, globalGrpOffset)
+    mc.parent( globalGrpOffset, mainSystemControl )
+#===========================================================================================================
+    if systemMethodValue == "Fk system" and controlClassMenuValue == "Cross":
+        mc.parent( crossControlGlobalGrp, mainSystemControl )
+
+    elif systemMethodValue == "Fk system" and controlClassMenuValue == "Sphere":
+        mc.parent( sphereControlGlobalGrp, mainSystemControl )
+
+    elif systemMethodValue == "Fk system" and controlClassMenuValue == "Square":
+        mc.parent( squareControlGlobalGrp, mainSystemControl )
+
+    elif systemMethodValue == "Fk system" and controlClassMenuValue == "FourArrows":
+        mc.parent( fourArrowControlGlobalGrp, mainSystemControl )
+#-----------------------------------------------------------------------------------------------------------    
+    principalContainer = mc.container( name=globalName+"_globalContainer__CNT", addNode=mainSystemControl, includeHierarchyBelow=True )
+#----------------------------------------------------------------------------------------------------------- 
+
+###---------------------------------------------------------------------------------------------------------
+###::::::::::::::::::::::::::::::::: Here just the secondary functions :::::::::::::::::::::::::::::::::::::
+###---------------------------------------------------------------------------------------------------------
+def connectControls():
+    
+    hairSystem       = ( mc.textScrollList( "dynSystemList", q=True, selectItem=True) )[0]
+    hairSystemNumber = hairSystem.split( "DynamicFksystem_mainCurve__" )[1]
+    hairSystem       ="hairSystem"+str(hairSystemNumber)
+    
+    mc.connectControl( "StartCurveAttract", hairSystem + ".startCurveAttract" )
+    mc.connectControl( "AttractionDamp", hairSystem + ".attractionDamp" )
+    mc.connectControl( "Stiffness", hairSystem + ".stiffness" )
+    mc.connectControl( "MotionDrag", hairSystem + ".motionDrag" )
+    mc.connectControl( "Drag", hairSystem + ".drag" )
+    mc.connectControl( "Damp", hairSystem + ".damp" )
+    mc.connectControl( "Friction", hairSystem + ".friction" )
+    mc.connectControl( "Mass", hairSystem + ".mass" )
+    mc.connectControl( "Gravity", hairSystem + ".gravity" )
+    mc.connectControl( "DynamicWeight",hairSystem + ".dynamicsWeight" )
+    
+#-----------------------------------------------------------------------------------------------------------
+    ### Set key To Forces
+#-----------------------------------------------------------------------------------------------------------
+def keyframeToSystemForces( type ):
+    try:
+        selectedSystem = mc.textScrollList( "dynSystemList", q=True, selectItem=True )[0]
+    except:
+        warningMessage02()
+        return
+    else:
+        pass
+    selectedSysNumber = selectedSystem.split("__")[1]
+    mc.setKeyframe( "hairSystem"+selectedSysNumber+type ) 
+
+#-----------------------------------------------------------------------------------------------------------
+    ### delete keys 
+#-----------------------------------------------------------------------------------------------------------
+def deleteKeysToSystemForces( type ):
+    try:
+        selectedSystem = mc.textScrollList( "dynSystemList", q=True, selectItem=True )[0]
+    except:
+        warningMessage02()
+        return
+    else:
+        pass
+    selectedSysNumber = selectedSystem.split("__")[1]
+    mc.cutKey( "hairSystem"+selectedSysNumber+type, clear=True )
+
+#-----------------------------------------------------------------------------------------------------------
+    ### Add the old systems
+#-----------------------------------------------------------------------------------------------------------
+def addOldSystems():
+    
+    preSistemas = mc.ls( "DynamicFksystem_mainCurve__*" )
+    sistemas    =[]
+    for s in preSistemas:
+        if 'Shape' not in s:
+            sistemas.append(s)                   
+    mc.textScrollList( "dynSystemList", edit=True, removeAll=True, append=sistemas )
+
+#-----------------------------------------------------------------------------------------------------------
+    ### Delete the systems.
+#-----------------------------------------------------------------------------------------------------------
+def deleteSystems():
+    
+    selectedChar = mc.textScrollList( "dynSystemList", q=True, selectItem=True )[0]
+    mc.select( selectedChar )
+    mc.duplicate()
+    mc.parent( world=True )
+    newCurve = mc.rename( "oldUserCurve")
+    mc.setAttr( newCurve+".visibility", 1)
+    mc.select( selectedChar )
+    mc.listRelatives( allParents=True, path=True )
+    mc.pickWalk( direction="up" )
+    mc.pickWalk( direction="up" )
+    mc.pickWalk( direction="up" )
+    mc.pickWalk( direction="up" )
+    mc.pickWalk( direction="up" )
+    mc.delete( hierarchy=True )
+    
+    preSistemas = mc.ls( "DynamicFksystem_mainCurve__*" )
+    sistemas    =[]
+    for s in preSistemas:
+        if 'Shape' not in s:
+            sistemas.append(s)
+    mc.textScrollList( "dynSystemList", edit=True, removeAll=True, append=sistemas )
+#-----------------------------------------------------------------------------------------------------------
+    ### Ui menus color and states changes .
+#-----------------------------------------------------------------------------------------------------------
+def UIitemColorChange():
+    systemMethodValue = mc.optionMenu( "systemMethodMenu", query=True, value=True )
+    
+    if systemMethodValue == "Fk system":
+        mc.optionMenu( "systemMethodMenu", edit=True, bgc=[0.1195, 0.1832, 0.2256], enableBackground=False  )
+        mc.optionMenu( "controlClassMenu", edit=True, enable=True, bgc=[0.1195, 0.1832, 0.2256], enableBackground=False  )
+        mc.intSliderGrp( "FkControlsNumbers", edit=True, enable=True )
+    else:
+        mc.optionMenu( "controlClassMenu", edit=True, enable=False,  bgc=[0.203, 0.203, 0.203], enableBackground=False )
+        mc.optionMenu( "systemMethodMenu", edit=True,  bgc=[0.3882, 0.3882, 0.3882], enableBackground=False )
+        mc.intSliderGrp( "FkControlsNumbers", edit=True, enable=False )
+        
+#-----------------------------------------------------------------------------------------------------------
+    ### Coloring to red  key icon 
+#-----------------------------------------------------------------------------------------------------------
+def colorChangeRedKeyIcon( type ):
+    try:
+        selectedSystem = mc.textScrollList( "dynSystemList", q=True, selectItem=True )[0]
+    except:
+        return
+    else:
+        pass
+    mc.iconTextButton( type, edit=True, bgc=[0.460, 0.191, 0.199] )
+
+#-----------------------------------------------------------------------------------------------------------
+    ### Coloring to green key icon 
+#-----------------------------------------------------------------------------------------------------------
+def colorChangeGreenKeyIcon( type ):
+    try:
+        selectedSystem = mc.textScrollList( "dynSystemList", q=True, selectItem=True )[0]
+    except:
+        warningMessage02()
+        return
+    else:
+        pass
+    mc.iconTextButton( type, edit=True, bgc=[0.130, 0.330, 0.130] )
+#-----------------------------------------------------------------------------------------------------------
+    ### Error messages
+#-----------------------------------------------------------------------------------------------------------
+def warningMessage01():
+    mc.warning( " YOU HAVE TO SELECT A SINGLE NURB´S CURVE TO PROCEED, OTHERWISE YOU CAN NOT CONTINUE. ")
+
+def warningMessage02():
+    mc.warning( " YOU HAVE TO SELECT A DYNAMIC SYSTEM IN THE LIST TO PROCEED. ")
+
+dynamicFkSystemUI()
