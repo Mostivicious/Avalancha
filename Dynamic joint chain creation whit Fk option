@@ -634,5 +634,3 @@ def warningMessage01():
 
 def warningMessage02():
     mc.warning( " YOU HAVE TO SELECT A DYNAMIC SYSTEM IN THE LIST TO PROCEED. ")
-
-dynamicFkSystemUI()
