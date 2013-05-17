@@ -39,7 +39,7 @@ def dynamicFkSystemUI():
 #-----------------------------------------------------------------------------------------------------------
     mc.window( "DynamicFkUI", title="DynamicFkSystem ", w=300, h=600, mnb=True, mxb=False, sizeable=False )
 #-----------------------------------------------------------------------------------------------------------
-    ### -->> "DynamicFkUI Main layout
+    ### -->> DynamicFkUI Main layout
 #-----------------------------------------------------------------------------------------------------------
     mainLayout = mc.rowColumnLayout( "mainLayoutUI", w=300, h=600 )
     mc.separator( h=20, w=300, style="in" )
@@ -223,7 +223,7 @@ def mainDynamicSystemProcces():
 ###---------------------------------------------------------------------------------------------------------
 
 #-----------------------------------------------------------------------------------------------------------
-    ###-->> Here lais the awesome option to create a Fk set of joints to control the system.
+    ###-->> Here lays the awesome option to create a Fk set of joints to control the system.
     ###-->> Check if the user have a Fk option enable and start the process.
     ###-->> Again making some question about the position of curve cv`s, and for each cv`s a joint is create
     ###-->> along the curve.
