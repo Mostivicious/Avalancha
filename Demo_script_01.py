@@ -21,7 +21,7 @@ class FootballCrowdMaker(object):
         self.mainUI.mainProgressBarQPrb.setHidden(True)
 
         # Set stylesheet.
-        sshFile = "P:/aronnax/maya/CDN_stylesheet.qss"
+        sshFile = "P:/maya/CDN_stylesheet.qss"
         with open(sshFile,"r") as fh:
             self.window.setStyleSheet(fh.read())
 
